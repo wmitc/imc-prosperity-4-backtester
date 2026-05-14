@@ -34,6 +34,8 @@ def save_visualizations(results: list[BacktestResult], output_dir: Path) -> list
 
             for row in day_result.activity_logs:
                 product = row.columns[2]
+                if row.columns[15] == 0:  # skip one-sided-book rows where mid=0
+                    continue
                 day_timestamps[product].append(row.columns[1])
                 day_prices[product].append(row.columns[15])
                 day_pnls[product].append(row.columns[16])
