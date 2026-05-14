@@ -12,6 +12,7 @@ from prosperity4bt.data import has_day_data
 from prosperity4bt.file_reader import FileReader, FileSystemReader, PackageResourcesReader
 from prosperity4bt.models import BacktestResult, TradeMatchingMode
 from prosperity4bt.runner import run_backtest
+from prosperity4bt.visualize import save_visualizations
 
 
 def parse_algorithm(algorithm: Path) -> Any:
@@ -184,7 +185,7 @@ def cli(
     algorithm: Annotated[Path, Argument(help="Path to the Python file containing the algorithm to backtest.", show_default=False, exists=True, file_okay=True, dir_okay=False, resolve_path=True)],
     days: Annotated[list[str], Argument(help="The days to backtest on. <round>-<day> for a single day, <round> for all days in a round.", show_default=False)],
     merge_pnl: Annotated[bool, Option("--merge-pnl", help="Merge profit and loss across days.")] = False,
-    vis: Annotated[bool, Option("--vis", help="(Not yet supported) Open backtest results in a visualizer when done.")] = False,
+    vis: Annotated[bool, Option("--vis", help="Save per-round PNG charts to results/.")] = False,
     out: Annotated[Optional[Path], Option(help="File to save output log to (defaults to backtests/<timestamp>.log).", show_default=False, dir_okay=False, resolve_path=True)] = None,
     no_out: Annotated[bool, Option("--no-out", help="Skip saving output log.")] = False,
     data: Annotated[Optional[Path], Option(help="Path to data directory. Must look similar in structure to the prosperity4bt/resources directory.", show_default=False, exists=True, file_okay=False, dir_okay=True, resolve_path=True)] = None,
@@ -246,7 +247,8 @@ def cli(
         print(f"\nSuccessfully saved backtest results to {format_path(output_file)}")
 
     if vis:
-        print("--vis is not yet supported for Prosperity 4")
+        vis_dir = Path.cwd() / "results"
+        save_visualizations(results, vis_dir)
 
 
 def main() -> None:
