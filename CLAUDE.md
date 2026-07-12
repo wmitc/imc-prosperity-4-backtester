@@ -18,21 +18,30 @@ ruff check
 # Type check
 mypy prosperity4bt
 
-# Run the backtester
-python -m prosperity4bt <algorithm_file.py> <round>[[-<day>]] [options]
+# Run the backtester (CLI is Typer-based; use --help for full options)
+python -m prosperity4bt <algorithm_file.py> <round>[-<day>] [options]
 
 # Examples
-python -m prosperity4bt example.py 0            # tutorial round
-python -m prosperity4bt example.py 1-0          # round 1 day 0
+python -m prosperity4bt example.py 0            # all days in tutorial round
+python -m prosperity4bt example.py 1-0          # round 1, day 0 only
 python -m prosperity4bt example.py 3 --merge-pnl
 python -m prosperity4bt example.py 5 --no-out --print
 ```
+
+Day specifier: `<round>` runs all days in that round; `<round>-<day>` runs one day
+(negative days are written like `1--1` for round 1, day -1). Multiple day args allowed.
+
+Key options: `--merge-pnl` (sum P&L across days), `--vis` (save per-round PNG charts to
+`results/`), `--out <file>`/`--no-out` (output log path; default `backtests/<timestamp>.log`),
+`--data <dir>` (custom data dir mirroring `prosperity4bt/resources/` layout), `--print`
+(stream trader output), `--match-trades all|worse|none`, `--original-timestamps`,
+`--no-progress`.
 
 ## Architecture
 
 ### Core Modules
 
-**`prosperity4bt/__main__.py`** — CLI entry point. Parses arguments, dynamically imports the user's algorithm file, iterates over requested rounds/days, and writes output JSON. Sets `PROSPERITY4BT_ROUND` and `PROSPERITY4BT_DAY` env vars so traders can detect the backtester context.
+**`prosperity4bt/__main__.py`** — CLI entry point (built with Typer). Dynamically imports the user's algorithm file, iterates over requested rounds/days, and writes a visualizer-compatible output log (default `backtests/<timestamp>.log`). Sets `PROSPERITY4BT_ROUND` and `PROSPERITY4BT_DAY` env vars so traders can detect the backtester context. Note: these env vars are NOT set in the official submission environment, so submitted code must not depend on them.
 
 **`prosperity4bt/runner.py`** — The simulation engine. Key functions:
 - `run_backtest()`: Main loop over timestamps; calls `trader.run(state)` each tick
@@ -50,6 +59,14 @@ python -m prosperity4bt example.py 5 --no-out --print
 **`prosperity4bt/file_reader.py`** — Pluggable data source abstraction. `FileSystemReader` reads from disk; `PackageResourcesReader` reads bundled package data.
 
 **`prosperity4bt/parse_submission_logs.py`** — Utility to convert official submission environment output logs into the CSV format used by this backtester.
+
+**`prosperity4bt/visualize.py`** — `--vis` handler. Renders per-round PNG charts (mid price + P&L per product) to `results/`, stitching multiple days into one continuous x-axis. Skips one-sided-book rows where `mid == 0`.
+
+**`prosperity4bt/open.py`** — Serves an output log over a one-shot localhost HTTP server and opens it in the jmerle Prosperity visualizer web app in the browser.
+
+### Strategy Files
+
+Root-level `*_strategy.py` (e.g. `round3_strategy.py`, `tutorial_strategy.py`) are the user's actual trading algorithms — one per round. Each defines a `Trader` class with a `run(state)` method. `example.py` is a minimal reference trader. These are the files passed as the `<algorithm_file.py>` argument.
 
 ### Data Flow
 
@@ -87,4 +104,5 @@ Position limits are enforced before matching — if any order would exceed the l
 ## Adding New Products / Rounds
 
 - Add position limits to `LIMITS` in `prosperity4bt/data.py`
-- Add CSV data files under `prosperity4bt/resources/<round>/` following the naming convention `prices_round_<r>_day_<d>.csv` and `trades_round_<r>_day_<d>.csv`
+- Add CSV data files under `prosperity4bt/resources/round<r>/` following the naming convention `prices_round_<r>_day_<d>.csv`, `trades_round_<r>_day_<d>.csv`, and optionally `observations_round_<r>_day_<d>.csv`
+- Note the delimiter split: prices and trades CSVs are **`;`-delimited**; observations CSVs are **`,`-delimited** (see `read_day_data()` in `data.py`)
