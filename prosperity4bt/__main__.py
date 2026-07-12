@@ -16,6 +16,12 @@ from prosperity4bt.visualize import save_visualizations
 
 
 def parse_algorithm(algorithm: Path) -> Any:
+    # Official submissions import `from datamodel import ...`; alias our datamodel
+    # under that name so real submissions run unmodified.
+    import prosperity4bt.datamodel
+
+    sys.modules.setdefault("datamodel", prosperity4bt.datamodel)
+
     sys.path.append(str(algorithm.parent))
     return import_module(algorithm.stem)
 
